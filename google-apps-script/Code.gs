@@ -1,22 +1,10 @@
 /**
- * 100-million-logs — Next.js 와 동일한 action API (A 방식)
- *
- * [최초 1회]
- * 1) 이 파일 전체를 Apps Script 편집기에 붙여 넣습니다.
- * 2) 아래 APPS_SCRIPT_SECRET_VALUE 에 Next.js .env 의 APPS_SCRIPT_SECRET 과 같은 값을 넣거나,
- *    프로젝트 설정 > 스크립트 속성 에 키 APPS_SCRIPT_SECRET 을 추가합니다.
- * 3) 편집기에서 setupSheets 를 선택 후 실행 → 권한 승인 (시트/헤더/기본 카테고리 생성)
- * 4) 배포 > 새 배포 > 유형: 웹 앱
- *    - 실행: 나
- *    - 액세스: 모든 사용자 (Next 서버가 POST 하므로)
- * 5) 웹 앱 URL 을 .env 의 GOOGLE_APPS_SCRIPT_WEB_APP_URL 에 넣습니다.
- *
- * [독립 스크립트인 경우] 스크립트 속성 SPREADSHEET_ID 에 시트 ID 를 넣으면 openById 로 엽니다.
- * 그렇지 않으면 스프레드시트에 바인딩된 스크립트로 사용합니다 (권장).
+ * 100-million-logs ? Next.js action API
+ * Deploy as Web App (POST). Run setupSheets once from editor.
+ * Set APPS_SCRIPT_SECRET in Script Properties or APPS_SCRIPT_SECRET_VALUE below.
  */
 
-/** Next.js APPS_SCRIPT_SECRET 과 동일하게 설정. 비어 있으면 스크립트 속성 APPS_SCRIPT_SECRET 사용 */
-var APPS_SCRIPT_SECRET_VALUE = "yeonjuice.west_20240409";
+var APPS_SCRIPT_SECRET_VALUE = "";
 
 var TAB = {
   GOAL: "Goal",
@@ -24,11 +12,13 @@ var TAB = {
   EXPENSES: "Expenses",
   CATEGORIES: "Categories",
   MONTHLY: "MonthlyAssets",
+  ASSET_CATEGORIES: "AssetCategories",
 };
 
 function getSecret_() {
-  var p =
-    PropertiesService.getScriptProperties().getProperty("APPS_SCRIPT_SECRET");
+  var p = PropertiesService.getScriptProperties().getProperty(
+    "APPS_SCRIPT_SECRET"
+  );
   if (p) return p;
   return APPS_SCRIPT_SECRET_VALUE;
 }
@@ -40,10 +30,6 @@ function getSpreadsheet_() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
-/**
- * 최초 1회 실행: 탭 생성, 헤더 행, Categories 기본 데이터
- * 편집기 상단에서 함수 선택 후 ▶ 실행
- */
 function setupSheets() {
   var ss = getSpreadsheet_();
 
@@ -60,29 +46,19 @@ function setupSheets() {
         "monthlyBudget",
       ],
     },
-    {
-      name: TAB.ASSETS,
-      headers: ["id", "name", "amount", "type"],
-    },
+    { name: TAB.ASSETS, headers: ["id", "name", "amount", "type"] },
     {
       name: TAB.EXPENSES,
       headers: ["id", "date", "category", "amount", "description"],
     },
-    {
-      name: TAB.CATEGORIES,
-      headers: ["id", "name", "color"],
-    },
-    {
-      name: TAB.MONTHLY,
-      headers: ["id", "month", "assets", "totalAmount"],
-    },
+    { name: TAB.CATEGORIES, headers: ["id", "name", "color"] },
+    { name: TAB.MONTHLY, headers: ["id", "month", "assets", "totalAmount"] },
+    { name: TAB.ASSET_CATEGORIES, headers: ["id", "name", "color"] },
   ];
 
   sheetConfigs.forEach(function (config) {
     var sheet = ss.getSheetByName(config.name);
-    if (!sheet) {
-      sheet = ss.insertSheet(config.name);
-    }
+    if (!sheet) sheet = ss.insertSheet(config.name);
     sheet.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
     sheet.getRange(1, 1, 1, config.headers.length).setFontWeight("bold");
   });
@@ -90,16 +66,27 @@ function setupSheets() {
   var categoriesSheet = ss.getSheetByName(TAB.CATEGORIES);
   if (categoriesSheet.getLastRow() <= 1) {
     var defaultCategories = [
-      ["1", "식비", "#ef4444"],
-      ["2", "교통비", "#3b82f6"],
-      ["3", "생활용품", "#10b981"],
-      ["4", "의료비", "#f59e0b"],
-      ["5", "문화생활", "#8b5cf6"],
-      ["6", "기타", "#6b7280"],
+      ["1", "\uc2dd\ube44", "#ef4444"],
+      ["2", "\uad50\ud1b5\ube44", "#3b82f6"],
+      ["3", "\uc0dd\ud65c\uc6a9\ud488", "#10b981"],
+      ["4", "\uc758\ub8cc\ube44", "#f59e0b"],
+      ["5", "\ubb38\ud654\uc0dd\ud65c", "#8b5cf6"],
+      ["6", "\uae30\ud0c0", "#6b7280"],
     ];
     categoriesSheet
       .getRange(2, 1, defaultCategories.length, 3)
       .setValues(defaultCategories);
+  }
+
+  var ac = ss.getSheetByName(TAB.ASSET_CATEGORIES);
+  if (ac.getLastRow() <= 1) {
+    var defAc = [
+      ["1", "\uc608\uae08", "#3182F6"],
+      ["2", "\uc8fc\uc2dd", "#10b981"],
+      ["3", "\uc801\uae08", "#f59e0b"],
+      ["4", "\uae30\ud0c0", "#6b7280"],
+    ];
+    ac.getRange(2, 1, defAc.length, 3).setValues(defAc);
   }
 
   var goalSheet = ss.getSheetByName(TAB.GOAL);
@@ -109,11 +96,8 @@ function setupSheets() {
       .setValues([[0, "2025-01", 100000000, "2026-12", 0, 0, 0]]);
   }
 
-  try {
-    SpreadsheetApp.getUi().alert("setupSheets 완료");
-  } catch (ignore) {
-    Logger.log("setupSheets 완료 (UI 없음)");
-  }
+  // getUi().alert �� Ȯ�� â�� '���������Ʈ' �ǿ��� ����, �����⿡���� ���� ���ó�� ���� �� ����.
+  Logger.log("setupSheets done ? ���������Ʈ �ǿ��� ��Ʈ������� Ȯ���ϼ���.");
 }
 
 function doPost(e) {
@@ -121,12 +105,10 @@ function doPost(e) {
   lock.waitLock(30000);
   try {
     var body = JSON.parse(e.postData.contents);
-
     var expected = getSecret_();
     if (!expected) {
       return jsonOut({
-        error:
-          "스크립트에 비밀키가 없습니다. APPS_SCRIPT_SECRET_VALUE 또는 스크립트 속성 APPS_SCRIPT_SECRET 을 설정하세요.",
+        error: "Set APPS_SCRIPT_SECRET or APPS_SCRIPT_SECRET_VALUE",
         ok: false,
       });
     }
@@ -146,26 +128,30 @@ function doPost(e) {
       case "getAssets":
         return jsonOut({ assets: readAssets_(ss), ok: true });
       case "appendAsset":
-        return jsonOut({
-          id: appendAsset_(ss, body.asset),
-          ok: true,
-        });
+        return jsonOut({ id: appendAsset_(ss, body.asset), ok: true });
+      case "updateAsset":
+        updateAsset_(ss, body.asset);
+        return jsonOut({ ok: true });
       case "getCategories":
         return jsonOut({ categories: readCategories_(ss), ok: true });
       case "getExpenses":
         return jsonOut({ expenses: readExpenses_(ss), ok: true });
       case "appendExpense":
-        return jsonOut({
-          id: appendExpense_(ss, body.expense),
-          ok: true,
-        });
+        return jsonOut({ id: appendExpense_(ss, body.expense), ok: true });
       case "getMonthlyAssets":
         return jsonOut({ monthlyAssets: readMonthlyAssets_(ss), ok: true });
       case "appendMonthlyAsset":
+        return jsonOut({ id: appendMonthly_(ss, body.payload), ok: true });
+      case "getAssetCategories":
+        return jsonOut({ assetCategories: readAssetCategories_(ss), ok: true });
+      case "appendAssetCategory":
         return jsonOut({
-          id: appendMonthly_(ss, body.payload),
+          id: appendAssetCategory_(ss, body.category),
           ok: true,
         });
+      case "setAssetMonthAmount":
+        setAssetMonthAmount_(ss, body.assetId, body.month, body.amount);
+        return jsonOut({ ok: true });
       default:
         return jsonOut({ error: "Unknown action: " + action, ok: false });
     }
@@ -181,7 +167,7 @@ function doPost(e) {
 
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
-    ContentService.MimeType.JSON,
+    ContentService.MimeType.JSON
   );
 }
 
@@ -204,17 +190,18 @@ function readGoal_(ss) {
 
 function updateGoal_(ss, goal) {
   var sh = ss.getSheetByName(TAB.GOAL);
-  if (!sh) throw new Error("Goal 시트 없음");
-  var row = [
-    goal.startAmount,
-    goal.startDate,
-    goal.targetAmount,
-    goal.targetDate,
-    goal.monthlyIncome,
-    goal.monthlyExpense,
-    goal.monthlyBudget,
-  ];
-  sh.getRange("A2:G2").setValues([row]);
+  if (!sh) throw new Error("Goal sheet missing");
+  sh.getRange("A2:G2").setValues([
+    [
+      goal.startAmount,
+      goal.startDate,
+      goal.targetAmount,
+      goal.targetDate,
+      goal.monthlyIncome,
+      goal.monthlyExpense,
+      goal.monthlyBudget,
+    ],
+  ]);
 }
 
 function readAssets_(ss) {
@@ -246,13 +233,57 @@ function nextId_(ids) {
 
 function appendAsset_(ss, asset) {
   var sh = ss.getSheetByName(TAB.ASSETS);
-  if (!sh) throw new Error("Assets 시트 없음");
+  if (!sh) throw new Error("Assets sheet missing");
   var list = readAssets_(ss);
   var ids = list.map(function (a) {
     return a.id;
   });
   var nid = nextId_(ids);
   sh.appendRow([nid, asset.name, asset.amount, asset.type]);
+  return nid;
+}
+
+function updateAsset_(ss, asset) {
+  var sh = ss.getSheetByName(TAB.ASSETS);
+  if (!sh) throw new Error("Assets sheet missing");
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(asset.id)) {
+      sh.getRange(i + 1, 2, i + 1, 4).setValues([
+        [asset.name, asset.amount, asset.type],
+      ]);
+      return;
+    }
+  }
+  throw new Error("asset row not found");
+}
+
+function readAssetCategories_(ss) {
+  var sh = ss.getSheetByName(TAB.ASSET_CATEGORIES);
+  if (!sh) return [];
+  var data = sh.getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    if (!r[0] && !r[1]) continue;
+    out.push({
+      id: String(r[0]),
+      name: String(r[1] || ""),
+      color: String(r[2] || "#6b7280"),
+    });
+  }
+  return out;
+}
+
+function appendAssetCategory_(ss, cat) {
+  var sh = ss.getSheetByName(TAB.ASSET_CATEGORIES);
+  if (!sh) throw new Error("AssetCategories sheet missing");
+  var list = readAssetCategories_(ss);
+  var ids = list.map(function (c) {
+    return c.id;
+  });
+  var nid = nextId_(ids);
+  sh.appendRow([nid, cat.name, cat.color || "#6b7280"]);
   return nid;
 }
 
@@ -294,7 +325,7 @@ function readExpenses_(ss) {
 
 function appendExpense_(ss, expense) {
   var sh = ss.getSheetByName(TAB.EXPENSES);
-  if (!sh) throw new Error("Expenses 시트 없음");
+  if (!sh) throw new Error("Expenses sheet missing");
   var list = readExpenses_(ss);
   var ids = list.map(function (e) {
     return e.id;
@@ -308,6 +339,18 @@ function appendExpense_(ss, expense) {
     expense.description,
   ]);
   return nid;
+}
+
+function normalizeMonthStr_(s) {
+  var t = String(s || "").trim();
+  if (t.length >= 7 && /^\d{4}-\d{2}/.test(t)) return t.slice(0, 7);
+  var d = new Date(t);
+  if (!isNaN(d.getTime())) {
+    var y = d.getFullYear();
+    var mo = d.getMonth() + 1;
+    return y + "-" + (mo < 10 ? "0" : "") + mo;
+  }
+  return t;
 }
 
 function readMonthlyAssets_(ss) {
@@ -325,17 +368,7 @@ function readMonthlyAssets_(ss) {
       assets = [];
     }
     var monthCell = String(r[1] || "");
-    var month = monthCell;
-    if (monthCell.length >= 7 && /^\d{4}-\d{2}/.test(monthCell)) {
-      month = monthCell.slice(0, 7);
-    } else {
-      var d = new Date(monthCell);
-      if (!isNaN(d.getTime())) {
-        var y = d.getFullYear();
-        var mo = d.getMonth() + 1;
-        month = y + "-" + (mo < 10 ? "0" : "") + mo;
-      }
-    }
+    var month = normalizeMonthStr_(monthCell);
     out.push({
       id: String(r[0]),
       month: month,
@@ -348,7 +381,7 @@ function readMonthlyAssets_(ss) {
 
 function appendMonthly_(ss, payload) {
   var sh = ss.getSheetByName(TAB.MONTHLY);
-  if (!sh) throw new Error("MonthlyAssets 시트 없음");
+  if (!sh) throw new Error("MonthlyAssets sheet missing");
   var list = readMonthlyAssets_(ss);
   var ids = list.map(function (x) {
     return x.id;
@@ -357,4 +390,78 @@ function appendMonthly_(ss, payload) {
   var json = JSON.stringify(payload.assets || []);
   sh.appendRow([nid, payload.month, json, payload.totalAmount]);
   return nid;
+}
+
+function setAssetMonthAmount_(ss, assetId, monthRaw, amountNum) {
+  var monthNorm = normalizeMonthStr_(monthRaw);
+  var masterList = readAssets_(ss);
+  var master = null;
+  for (var i = 0; i < masterList.length; i++) {
+    if (String(masterList[i].id) === String(assetId)) {
+      master = masterList[i];
+      break;
+    }
+  }
+  if (!master) throw new Error("asset not found");
+
+  var sh = ss.getSheetByName(TAB.MONTHLY);
+  var data = sh.getDataRange().getValues();
+  var sheetRow = -1;
+  for (var r = 1; r < data.length; r++) {
+    if (normalizeMonthStr_(data[r][1]) === monthNorm) {
+      sheetRow = r + 1;
+      break;
+    }
+  }
+
+  var amt = Number(amountNum) || 0;
+  var assets;
+  var total = 0;
+
+  if (sheetRow === -1) {
+    assets = [
+      {
+        id: master.id,
+        name: master.name,
+        amount: amt,
+        type: master.type,
+      },
+    ];
+    total = amt;
+    var list = readMonthlyAssets_(ss);
+    var ids = list.map(function (x) {
+      return x.id;
+    });
+    var nid = nextId_(ids);
+    sh.appendRow([nid, monthNorm, JSON.stringify(assets), total]);
+    return;
+  }
+
+  try {
+    assets = JSON.parse(String(data[sheetRow - 1][2] || "[]"));
+  } catch (e) {
+    assets = [];
+  }
+  var found = false;
+  for (var j = 0; j < assets.length; j++) {
+    if (String(assets[j].id) === String(assetId)) {
+      assets[j].amount = amt;
+      assets[j].name = master.name;
+      assets[j].type = master.type;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    assets.push({
+      id: master.id,
+      name: master.name,
+      amount: amt,
+      type: master.type,
+    });
+  }
+  for (var k = 0; k < assets.length; k++) {
+    total += Number(assets[k].amount) || 0;
+  }
+  sh.getRange(sheetRow, 3, sheetRow, 4).setValues([[JSON.stringify(assets), total]]);
 }

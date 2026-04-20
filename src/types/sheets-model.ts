@@ -1,12 +1,17 @@
 /** DB 스키마 (Google Sheets 탭과 동일한 필드명) */
 
-export type AssetType = "deposit" | "stock" | "savings" | "other";
-
 export type Asset = {
   id: string;
   name: string;
   amount: number;
-  type: AssetType | string;
+  type: string;
+};
+
+/** 자산 분류 (AssetCategories 탭 또는 기본값) */
+export type AssetCategory = {
+  id: string;
+  name: string;
+  color: string;
 };
 
 export type Category = {

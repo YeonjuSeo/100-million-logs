@@ -1,6 +1,7 @@
 import { callAppsScript } from "./apps-script-proxy";
 import type {
   Asset,
+  AssetCategory,
   Category,
   Expense,
   GoalSettings,
@@ -31,6 +32,40 @@ export async function appendAsset(asset: Omit<Asset, "id">): Promise<string> {
     asset,
   });
   return data.id;
+}
+
+export async function updateAsset(asset: Asset): Promise<void> {
+  await callAppsScript({ action: "updateAsset", asset });
+}
+
+export async function fetchAssetCategories(): Promise<AssetCategory[]> {
+  const data = await callAppsScript<{ assetCategories: AssetCategory[] }>({
+    action: "getAssetCategories",
+  });
+  return data.assetCategories ?? [];
+}
+
+export async function appendAssetCategory(
+  row: Omit<AssetCategory, "id">
+): Promise<string> {
+  const data = await callAppsScript<{ id: string }>({
+    action: "appendAssetCategory",
+    category: row,
+  });
+  return data.id;
+}
+
+export async function setAssetMonthAmount(input: {
+  assetId: string;
+  month: string;
+  amount: number;
+}): Promise<void> {
+  await callAppsScript({
+    action: "setAssetMonthAmount",
+    assetId: input.assetId,
+    month: input.month,
+    amount: input.amount,
+  });
 }
 
 export async function fetchCategories(): Promise<Category[]> {
