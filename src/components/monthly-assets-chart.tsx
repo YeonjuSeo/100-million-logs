@@ -23,12 +23,13 @@ type ChartPoint = {
 function formatMonthLabel(month: string): string {
   const m = month.match(/^(\d{4})-(\d{2})/);
   if (!m) return month;
-  return `${m[1].slice(2)}.${Number(m[2])}월`;
+  return `${m[1].slice(2)}.${Number(m[2])}\uC6D4`;
 }
 
 function formatYAxis(n: number): string {
-  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`;
-  if (n >= 10_000) return `${Math.round(n / 10_000)}만`;
+  if (n >= 100_000_000)
+    return `${(n / 100_000_000).toFixed(1)}\uC5B5`;
+  if (n >= 10_000) return `${Math.round(n / 10_000)}\uB9CC`;
   return `${n}`;
 }
 
@@ -45,19 +46,27 @@ export function MonthlyAssetsChart({ rows }: { rows: MonthlyAssetRow[] }) {
 
   if (data.length === 0) return null;
 
+  const title =
+    "\uC6D4\uBCC4 \uCD1D\uC790\uC0B0 \uCD94\uC774";
+  const subtitle =
+    "MonthlyAssets \uC2DC\uD2B8\uC758 \uC6D4\uBCC4 \uD569\uACC4 \uAE30\uC900";
+  const tooltipTotal = "\uCD1D \uC790\uC0B0";
+
   return (
     <div className="mb-6 rounded-2xl border border-[#E5E8EB] bg-white p-4">
       <h2 className="mb-1 text-sm font-semibold text-[#4E5968]">
-        월별 총자산 추이
+        {title}
       </h2>
-      <p className="mb-4 text-xs text-[#8B95A1]">
-        MonthlyAssets 시트의 총액 기준
-      </p>
-      <div className="h-[240px] w-full min-w-0">
+      <p className="mb-4 text-xs text-[#8B95A1]">{subtitle}</p>
+      <div
+        className="h-[240px] w-full min-w-0 outline-none focus:outline-none [&_*]:outline-none [&_svg]:outline-none"
+        tabIndex={-1}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 8, right: 8, left: -12, bottom: 8 }}
+            style={{ outline: "none" }}
           >
             <CartesianGrid stroke="#EEF1F4" strokeDasharray="3 3" />
             <XAxis
@@ -83,10 +92,7 @@ export function MonthlyAssetsChart({ rows }: { rows: MonthlyAssetRow[] }) {
                 border: "1px solid #E5E8EB",
                 fontSize: "12px",
               }}
-              formatter={(value) => [
-                formatKRW(Number(value)),
-                "총 자산",
-              ]}
+              formatter={(value) => [formatKRW(Number(value)), tooltipTotal]}
               labelFormatter={(label) => String(label)}
             />
             <Line
@@ -96,6 +102,7 @@ export function MonthlyAssetsChart({ rows }: { rows: MonthlyAssetRow[] }) {
               strokeWidth={2.5}
               dot={{ r: 4, fill: "#3182F6", strokeWidth: 0 }}
               activeDot={{ r: 6, fill: "#1B64DA" }}
+              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
